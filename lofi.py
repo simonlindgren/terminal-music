@@ -92,8 +92,8 @@ def resolve_stream_url(url: str, runner=subprocess.run) -> str:
             (result.stderr or "").strip()
             or f"yt-dlp exited {result.returncode}"
         )
-    line = (result.stdout or "").splitlines()
-    line = line[0].strip() if line else ""
+    lines = (result.stdout or "").splitlines()
+    line = lines[0].strip() if lines else ""
     if not line:
         raise ResolverError("yt-dlp returned no URL")
     return line
