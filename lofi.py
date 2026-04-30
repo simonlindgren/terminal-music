@@ -67,6 +67,38 @@ def seed_config_if_missing(path: Path) -> None:
     path.write_text(DEFAULT_STREAMS_TOML)
 
 
+# Resolver — wrap yt-dlp
+
+import subprocess
+
+
+class ResolverError(RuntimeError):
+    pass
+
+
+def resolve_stream_url(url: str, runner=subprocess.run) -> str:
+    """Resolve a YouTube URL to its HLS manifest URL via yt-dlp.
+
+    Returns the first line of stdout. Raises ResolverError on
+    non-zero exit or empty output.
+    """
+    result = runner(
+        ["yt-dlp", "-g", "--no-warnings", url],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise ResolverError(
+            (result.stderr or "").strip()
+            or f"yt-dlp exited {result.returncode}"
+        )
+    line = (result.stdout or "").splitlines()
+    line = line[0].strip() if line else ""
+    if not line:
+        raise ResolverError("yt-dlp returned no URL")
+    return line
+
+
 def main() -> int:
     raise SystemExit("lofi: not yet implemented")
 
