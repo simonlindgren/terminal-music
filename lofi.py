@@ -366,23 +366,25 @@ def _draw_keys(stdscr, y: int) -> None:
 def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) -> None:
     stdscr.erase()
     h, w = stdscr.getmaxyx()
-    list_top = 1
-    max_rows = max(0, h - 4)
+    # Rows 1..h-4 are the space between header and horizon.
+    available_top = 1
+    available_rows = max(0, h - 4)
 
     _draw_header(stdscr, w)
 
     if not bookmarks:
+        msg = "no streams. edit ~/.config/lofi/streams.toml"
+        y = available_top + max(0, (available_rows - 1) // 2)
         try:
-            stdscr.addnstr(
-                list_top, 0,
-                "no streams. edit ~/.config/lofi/streams.toml",
-                w - 1, _attr(PAIR_MAGENTA, dim=True),
-            )
+            stdscr.addnstr(y, 0, msg, w - 1, _attr(PAIR_MAGENTA, dim=True))
         except curses.error:
             pass
     else:
-        start = max(0, cursor - max_rows + 1) if cursor >= max_rows else 0
-        visible = bookmarks[start : start + max_rows]
+        start = max(0, cursor - available_rows + 1) if cursor >= available_rows else 0
+        visible = bookmarks[start : start + available_rows]
+        hidden = len(bookmarks) - len(visible)
+        block_height = len(visible) + (1 if hidden > 0 else 0)
+        list_top = available_top + max(0, (available_rows - block_height) // 2)
         for i, b in enumerate(visible):
             idx = start + i
             _draw_row(
@@ -390,7 +392,6 @@ def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) ->
                 is_cursor=(idx == cursor),
                 is_current=(state.current is b),
             )
-        hidden = len(bookmarks) - len(visible)
         if hidden > 0:
             try:
                 stdscr.addnstr(
