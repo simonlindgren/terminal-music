@@ -295,9 +295,9 @@ def _draw_header(stdscr, w: int) -> None:
 def _draw_row(
     stdscr, y: int, b: Bookmark, is_cursor: bool, is_current: bool,
 ) -> None:
-    pink = _attr(PAIR_PINK, bold=True)
+    cyan = _attr(PAIR_CYAN, bold=True)
     mag = _attr(PAIR_MAGENTA, bold=is_current)
-    prefix_attr = pink if is_cursor else mag
+    prefix_attr = cyan if is_cursor else mag
     _add_segments(stdscr, y, [
         ("> " if is_cursor else "  ", prefix_attr),
         (f"[{b.name}]", mag),
@@ -326,7 +326,7 @@ def _draw_status(stdscr, y: int, state: PlayerState) -> None:
     elif state.status == "resolving":
         name = state.current.display if state.current else ""
         _add_segments(stdscr, y, [
-            ("… resolving ", cyan),
+            ("… connecting to ", cyan),
             (name, cyan),
         ])
     elif state.status == "error":
