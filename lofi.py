@@ -282,16 +282,28 @@ def run_tui(
     state = PlayerState()
     state_lock = threading.Lock()
 
+    def set_error(msg: str) -> None:
+        state.status = "error"
+        state.error = msg
+
+    def safe_ipc(action: str, fn) -> bool:
+        try:
+            fn()
+            return True
+        except OSError as exc:
+            set_error(f"mpv {action} failed: {exc}")
+            return False
+
     def on_resolved(bookmark, url, err) -> None:
         with state_lock:
             # If user moved on, ignore stale results
             if state.current is not bookmark or state.status != "resolving":
                 return
             if err:
-                state.status = "error"
-                state.error = f"could not resolve {bookmark.name}"
+                set_error(f"could not resolve {bookmark.name}")
                 return
-            client.load(url)
+            if not safe_ipc("load", lambda: client.load(url)):
+                return
             state.status = "playing"
             state.started_at = time.monotonic()
 
@@ -302,8 +314,8 @@ def run_tui(
             ch = stdscr.getch()
         except KeyboardInterrupt:
             break
-        if ch == -1:
-            continue  # timeout, just redraw
+        if ch == -1 or ch == curses.KEY_RESIZE:
+            continue  # timeout or resize, redraw
         if ch in (ord("q"), 27):  # q or ESC
             break
         if not bookmarks:
@@ -321,25 +333,24 @@ def run_tui(
         elif ch == ord(" "):
             with state_lock:
                 if state.status == "playing":
-                    client.pause()
-                    state.status = "paused"
+                    if safe_ipc("pause", client.pause):
+                        state.status = "paused"
                 elif state.status == "paused":
-                    client.resume()
-                    state.status = "playing"
+                    if safe_ipc("resume", client.resume):
+                        state.status = "playing"
         elif ch == ord("s"):
             with state_lock:
                 if state.status in ("playing", "paused"):
-                    client.stop()
-                    state.status = "idle"
-                    state.current = None
+                    if safe_ipc("stop", client.stop):
+                        state.status = "idle"
+                        state.current = None
         elif ch == ord("r"):
             try:
                 bookmarks[:] = load_config(config_path)
                 cursor = min(cursor, max(0, len(bookmarks) - 1))
             except Exception as exc:
                 with state_lock:
-                    state.status = "error"
-                    state.error = f"reload failed: {exc}"
+                    set_error(f"reload failed: {exc}")
 
 
 def main() -> int:
