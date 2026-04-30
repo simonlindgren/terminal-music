@@ -296,13 +296,11 @@ def _draw_row(
     stdscr, y: int, b: Bookmark, is_cursor: bool, is_current: bool,
 ) -> None:
     pink = _attr(PAIR_PINK, bold=True)
-    cyan = _attr(PAIR_CYAN, bold=is_current)
-    mag = _attr(PAIR_MAGENTA)
-    prefix_attr = pink if is_cursor else cyan
+    mag = _attr(PAIR_MAGENTA, bold=is_current)
+    prefix_attr = pink if is_cursor else mag
     _add_segments(stdscr, y, [
         ("> " if is_cursor else "  ", prefix_attr),
-        (f"{b.display:<28}", cyan),
-        (f"  [{b.name}]", mag),
+        (f"[{b.name}]", mag),
     ])
 
 
@@ -319,9 +317,9 @@ def _draw_horizon(stdscr, y: int, w: int) -> None:
 def _draw_status(stdscr, y: int, state: PlayerState) -> None:
     pink = _attr(PAIR_PINK, bold=True)
     cyan = _attr(PAIR_CYAN, bold=True)
+    mag = _attr(PAIR_MAGENTA)
     mag_dim = _attr(PAIR_MAGENTA, dim=True)
     gold = _attr(PAIR_GOLD, bold=True)
-    gold_dim = _attr(PAIR_GOLD, dim=True)
 
     if state.status == "idle":
         _add_segments(stdscr, y, [("■ idle", mag_dim)])
@@ -342,7 +340,7 @@ def _draw_status(stdscr, y: int, state: PlayerState) -> None:
         _add_segments(stdscr, y, [
             ("▶ ", pink),
             (f"{name}   ", cyan),
-            (elapsed, gold),
+            (elapsed, mag),
         ])
     elif state.status == "paused":
         elapsed = _format_elapsed(time.monotonic() - state.started_at)
@@ -350,7 +348,7 @@ def _draw_status(stdscr, y: int, state: PlayerState) -> None:
         _add_segments(stdscr, y, [
             ("‖ ", gold),
             (f"{name}   ", cyan),
-            (elapsed, gold_dim),
+            (elapsed, mag),
         ])
 
 
