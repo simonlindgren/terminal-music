@@ -3,17 +3,31 @@
 
 from __future__ import annotations
 
+import argparse
 import curses
 import json
+import locale
 import os
+import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import time
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+
+CONFIG_PATH = Path.home() / ".config" / "lofi" / "streams.toml"
+VERSION = "0.1.0"
+
+
+def _check_binary(name: str) -> str | None:
+    if shutil.which(name) is None:
+        return f"lofi: {name} not found. install with: brew install {name}"
+    return None
 
 
 @dataclass(frozen=True)
@@ -353,8 +367,44 @@ def run_tui(
                     set_error(f"reload failed: {exc}")
 
 
-def main() -> int:
-    raise SystemExit("lofi: not yet implemented")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="lofi",
+        description="minimalist terminal music player for YouTube livestreams",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"lofi {VERSION}"
+    )
+    parser.parse_args(argv)
+
+    # Honour the user's locale so curses can render the Unicode glyphs.
+    locale.setlocale(locale.LC_ALL, "")
+
+    for binary in ("mpv", "yt-dlp"):
+        msg = _check_binary(binary)
+        if msg:
+            print(msg, file=sys.stderr)
+            return 1
+
+    seed_config_if_missing(CONFIG_PATH)
+    try:
+        bookmarks = load_config(CONFIG_PATH)
+    except Exception as exc:
+        print(f"lofi: failed to read {CONFIG_PATH}: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        proc, sock, sock_path = start_mpv()
+    except RuntimeError as exc:
+        print(f"lofi: {exc}", file=sys.stderr)
+        return 1
+
+    client = MpvClient(sock)
+    try:
+        curses.wrapper(run_tui, bookmarks, client, CONFIG_PATH)
+    finally:
+        stop_mpv(proc, sock, sock_path)
+    return 0
 
 
 if __name__ == "__main__":
