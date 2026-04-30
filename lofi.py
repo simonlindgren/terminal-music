@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -97,6 +98,31 @@ def resolve_stream_url(url: str, runner=subprocess.run) -> str:
     if not line:
         raise ResolverError("yt-dlp returned no URL")
     return line
+
+
+# MpvClient — JSON-IPC command sending
+
+
+class MpvClient:
+    """Sends JSON-IPC commands to a running mpv instance."""
+
+    def __init__(self, sock) -> None:
+        self._sock = sock
+
+    def load(self, url: str) -> None:
+        self._send({"command": ["loadfile", url, "replace"]})
+
+    def pause(self) -> None:
+        self._send({"command": ["set_property", "pause", True]})
+
+    def resume(self) -> None:
+        self._send({"command": ["set_property", "pause", False]})
+
+    def stop(self) -> None:
+        self._send({"command": ["stop"]})
+
+    def _send(self, obj: dict) -> None:
+        self._sock.sendall(json.dumps(obj).encode("utf-8") + b"\n")
 
 
 def main() -> int:
