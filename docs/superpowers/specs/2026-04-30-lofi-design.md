@@ -57,13 +57,17 @@ Path: `~/.config/lofi/streams.toml`.
 Format:
 
 ```toml
+[synthwave]
+url = "https://www.youtube.com/watch?v=4xDzrJKXOOY"
+title = "synthwave radio"
+
 [lofi]
 url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
-title = "lofi hip hop radio"   # optional
+title = "lofi hip hop radio"
 
-[jazz]
-url = "https://www.youtube.com/watch?v=Dx5qFachd3A"
-title = "jazz radio"
+[relax]
+url = "https://www.youtube.com/watch?v=28KRPhVzCus"
+title = "relax radio"
 ```
 
 - Each `[name]` table is one bookmark. The name is the short
@@ -74,9 +78,9 @@ title = "jazz radio"
 
 Behaviour:
 - If the config file is missing at startup, `lofi` creates the
-  directory and writes a stub file containing a comment explaining
-  the format, then opens with an empty list and a hint:
-  `no streams. edit ~/.config/lofi/streams.toml`.
+  directory and writes a seed file containing the three default
+  streams (`synthwave`, `lofi`, `relax`) shown above, plus a comment
+  explaining how to add more.
 - If the config is malformed (TOML parse error), `lofi` exits with
   the parse error and the offending line number.
 - The `r` key reloads the config without restarting playback.
@@ -90,9 +94,9 @@ no panels.
 Layout:
 
 ```
-  lofi hip hop radio          [lofi]
-> jazz radio                  [jazz]
-  death metal radio           [metal]
+  synthwave radio             [synthwave]
+> lofi hip hop radio          [lofi]
+  relax radio                 [relax]
 
   ▶ lofi hip hop radio   00:12:34
   ↑↓ select   ⏎ play   space pause   s stop   q quit
