@@ -1,5 +1,7 @@
 # lofi
 
+![lofi](screenshot.png)
+
 minimalist terminal music player for YouTube livestreams.
 
 ## install
