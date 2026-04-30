@@ -1,6 +1,6 @@
 # lofi
 
-![lofi](screenshot.png)
+![lofi](lofi.png)
 
 minimalist terminal music player for YouTube livestreams.
 
