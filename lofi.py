@@ -4,6 +4,11 @@
 from __future__ import annotations
 
 import json
+import os
+import socket
+import subprocess
+import tempfile
+import time
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -70,8 +75,6 @@ def seed_config_if_missing(path: Path) -> None:
 
 # Resolver — wrap yt-dlp
 
-import subprocess
-
 
 class ResolverError(RuntimeError):
     pass
@@ -123,6 +126,71 @@ class MpvClient:
 
     def _send(self, obj: dict) -> None:
         self._sock.sendall(json.dumps(obj).encode("utf-8") + b"\n")
+
+
+def start_mpv() -> tuple[subprocess.Popen, socket.socket, str]:
+    """Launch a headless mpv and return (process, connected socket, socket_path).
+
+    Caller is responsible for closing the socket and terminating the
+    process.
+    """
+    socket_path = os.path.join(
+        tempfile.gettempdir(), f"lofi-mpv-{os.getpid()}.sock"
+    )
+    if os.path.exists(socket_path):
+        os.unlink(socket_path)
+    proc = subprocess.Popen(
+        [
+            "mpv",
+            "--no-video",
+            "--no-terminal",
+            "--idle=yes",
+            "--no-config",
+            "--cache=yes",
+            f"--input-ipc-server={socket_path}",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    deadline = time.monotonic() + 2.0
+    while True:
+        try:
+            sock.connect(socket_path)
+            break
+        except (FileNotFoundError, ConnectionRefusedError):
+            if proc.poll() is not None:
+                raise RuntimeError("failed to start mpv")
+            if time.monotonic() > deadline:
+                proc.terminate()
+                raise RuntimeError("failed to start mpv")
+            time.sleep(0.05)
+    return proc, sock, socket_path
+
+
+def stop_mpv(
+    proc: subprocess.Popen,
+    sock: socket.socket,
+    socket_path: str,
+) -> None:
+    try:
+        sock.sendall(b'{"command":["quit"]}\n')
+    except OSError:
+        pass
+    try:
+        sock.close()
+    except OSError:
+        pass
+    try:
+        proc.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        proc.terminate()
+        proc.wait(timeout=2.0)
+    if os.path.exists(socket_path):
+        try:
+            os.unlink(socket_path)
+        except OSError:
+            pass
 
 
 def main() -> int:
