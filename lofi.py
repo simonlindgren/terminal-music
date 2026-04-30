@@ -359,7 +359,6 @@ def _draw_keys(stdscr, y: int) -> None:
         ("↑↓", pink), (" select   ", mag),
         ("⏎", pink), (" play   ", mag),
         ("space", pink), (" pause   ", mag),
-        ("r", pink), (" reload   ", mag),
         ("q", pink), (" quit", mag),
     ])
 
@@ -422,7 +421,6 @@ def run_tui(
     stdscr,
     bookmarks: list[Bookmark],
     client: MpvClient,
-    config_path: Path,
 ) -> None:
     curses.curs_set(0)
     _init_colors()
@@ -497,13 +495,6 @@ def run_tui(
                 elif state.status == "paused":
                     if safe_ipc("resume", client.resume):
                         state.status = "playing"
-        elif ch == ord("r"):
-            try:
-                bookmarks[:] = load_config(config_path)
-                cursor = min(cursor, max(0, len(bookmarks) - 1))
-            except Exception as exc:
-                with state_lock:
-                    set_error(f"reload failed: {exc}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -540,7 +531,7 @@ def main(argv: list[str] | None = None) -> int:
 
     client = MpvClient(sock)
     try:
-        curses.wrapper(run_tui, bookmarks, client, CONFIG_PATH)
+        curses.wrapper(run_tui, bookmarks, client)
     finally:
         stop_mpv(proc, sock, sock_path)
     return 0

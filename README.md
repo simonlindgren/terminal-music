@@ -19,5 +19,4 @@ with three streams (synthwave, lofi, relax) and starts playing
 synthwave automatically. edit the config to add or remove
 bookmarks.
 
-keys: `↑↓` or `j k` select, `⏎` play, `space` pause,
-`r` reload config, `q` quit.
+keys: `↑↓` or `j k` select, `⏎` play, `space` pause, `q` quit.
