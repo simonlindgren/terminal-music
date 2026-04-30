@@ -160,8 +160,10 @@ def start_mpv() -> tuple[subprocess.Popen, socket.socket, str]:
             break
         except (FileNotFoundError, ConnectionRefusedError):
             if proc.poll() is not None:
+                sock.close()
                 raise RuntimeError("failed to start mpv")
             if time.monotonic() > deadline:
+                sock.close()
                 proc.terminate()
                 raise RuntimeError("failed to start mpv")
             time.sleep(0.05)
