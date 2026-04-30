@@ -42,6 +42,31 @@ def load_config(path: Path) -> list[Bookmark]:
     return bookmarks
 
 
+DEFAULT_STREAMS_TOML = """\
+# lofi config — add or remove streams below.
+# each entry is a [name] table with a url and optional title.
+
+[synthwave]
+url = "https://www.youtube.com/watch?v=4xDzrJKXOOY"
+title = "synthwave radio"
+
+[lofi]
+url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
+title = "lofi hip hop radio"
+
+[relax]
+url = "https://www.youtube.com/watch?v=28KRPhVzCus"
+title = "relax radio"
+"""
+
+
+def seed_config_if_missing(path: Path) -> None:
+    if path.exists():
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(DEFAULT_STREAMS_TOML)
+
+
 def main() -> int:
     raise SystemExit("lofi: not yet implemented")
 
