@@ -277,16 +277,19 @@ def _add_segments(stdscr, y: int, segments: list[tuple[str, int]]) -> None:
         pass
 
 
-def _draw_header(stdscr) -> None:
+def _draw_header(stdscr, w: int) -> None:
     pink = _attr(PAIR_PINK, bold=True)
     cyan = _attr(PAIR_CYAN, bold=True)
-    mag = _attr(PAIR_MAGENTA)
-    _add_segments(stdscr, 0, [
+    title = [
         ("░▒▓█ ", pink),
         ("L O F I", cyan),
         (" █▓▒░", pink),
-        ("    // synthwave", mag),
-    ])
+    ]
+    used = sum(len(t) for t, _ in title)
+    remaining = max(0, w - 1 - used)
+    pattern = "▒▓█▓▒░"
+    fill = (pattern * (remaining // len(pattern) + 1))[:remaining]
+    _add_segments(stdscr, 0, title + [(fill, pink)])
 
 
 def _draw_row(
@@ -369,7 +372,7 @@ def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) ->
     list_top = 1
     max_rows = max(0, h - 4)
 
-    _draw_header(stdscr)
+    _draw_header(stdscr, w)
 
     if not bookmarks:
         try:
