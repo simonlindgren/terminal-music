@@ -203,7 +203,11 @@ def stop_mpv(
         proc.wait(timeout=2.0)
     except subprocess.TimeoutExpired:
         proc.terminate()
-        proc.wait(timeout=2.0)
+        try:
+            proc.wait(timeout=2.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=2.0)
     if os.path.exists(socket_path):
         try:
             os.unlink(socket_path)
@@ -245,15 +249,19 @@ def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) ->
             w - 1,
         )
     else:
-        visible = bookmarks[:max_rows]
+        # Scroll the window so the cursor is always visible.
+        start = max(0, cursor - max_rows + 1) if cursor >= max_rows else 0
+        visible = bookmarks[start : start + max_rows]
         for i, b in enumerate(visible):
-            prefix = "> " if i == cursor else "  "
+            idx = start + i
+            prefix = "> " if idx == cursor else "  "
             line = f"{prefix}{b.display:<28}  [{b.name}]"
             stdscr.addnstr(i, 0, line, w - 1)
-        if len(bookmarks) > max_rows:
+        hidden = len(bookmarks) - len(visible)
+        if hidden > 0:
             stdscr.addnstr(
-                max_rows, 0,
-                f"  ... +{len(bookmarks) - max_rows} more", w - 1,
+                len(visible), 0,
+                f"  ... +{hidden} more", w - 1,
             )
 
     status_row = h - 2
