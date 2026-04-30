@@ -13,8 +13,9 @@ chmod +x ~/.local/bin/lofi
 ## use
 
 run `lofi`. on first launch it seeds `~/.config/lofi/streams.toml`
-with three streams (synthwave, lofi, relax). edit that file to add
-or remove bookmarks.
+with three streams (synthwave, lofi, relax) and starts playing
+synthwave automatically. edit the config to add or remove
+bookmarks.
 
-keys: `↑↓` or `j k` select, `⏎` play, `space` pause, `s` stop,
+keys: `↑↓` or `j k` select, `⏎` play, `space` pause,
 `r` reload config, `q` quit.

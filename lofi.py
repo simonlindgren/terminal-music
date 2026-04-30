@@ -223,7 +223,42 @@ class PlayerState:
     started_at: float = 0.0       # time.monotonic() when loadfile sent
 
 
-KEY_HELP = "↑↓ select   ⏎ play   space pause   s stop   r reload   q quit"
+# Synthwave color pairs (16-color fallback if 256 isn't available)
+PAIR_PINK = 1
+PAIR_CYAN = 2
+PAIR_MAGENTA = 3
+PAIR_GOLD = 4
+
+
+def _init_colors() -> None:
+    if not curses.has_colors():
+        return
+    curses.start_color()
+    try:
+        curses.use_default_colors()
+        bg = -1
+    except curses.error:
+        bg = curses.COLOR_BLACK
+    if curses.COLORS >= 256:
+        pink, cyan, mag, gold = 205, 51, 165, 227
+    else:
+        pink = curses.COLOR_MAGENTA
+        cyan = curses.COLOR_CYAN
+        mag = curses.COLOR_MAGENTA
+        gold = curses.COLOR_YELLOW
+    curses.init_pair(PAIR_PINK, pink, bg)
+    curses.init_pair(PAIR_CYAN, cyan, bg)
+    curses.init_pair(PAIR_MAGENTA, mag, bg)
+    curses.init_pair(PAIR_GOLD, gold, bg)
+
+
+def _attr(pair: int, *, bold: bool = False, dim: bool = False) -> int:
+    a = curses.color_pair(pair)
+    if bold:
+        a |= curses.A_BOLD
+    if dim:
+        a |= curses.A_DIM
+    return a
 
 
 def _format_elapsed(seconds: float) -> str:
@@ -233,52 +268,142 @@ def _format_elapsed(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{sec:02d}"
 
 
-def _glyph(status: str) -> str:
-    return {"playing": "▶", "paused": "‖"}.get(status, "■")
+def _add_segments(stdscr, y: int, segments: list[tuple[str, int]]) -> None:
+    try:
+        stdscr.move(y, 0)
+        for text, attr in segments:
+            stdscr.addstr(text, attr)
+    except curses.error:
+        pass
+
+
+def _draw_header(stdscr) -> None:
+    pink = _attr(PAIR_PINK, bold=True)
+    cyan = _attr(PAIR_CYAN, bold=True)
+    mag = _attr(PAIR_MAGENTA)
+    _add_segments(stdscr, 0, [
+        ("░▒▓█ ", pink),
+        ("L O F I", cyan),
+        (" █▓▒░", pink),
+        ("    // synthwave", mag),
+    ])
+
+
+def _draw_row(
+    stdscr, y: int, b: Bookmark, is_cursor: bool, is_current: bool,
+) -> None:
+    pink = _attr(PAIR_PINK, bold=True)
+    cyan = _attr(PAIR_CYAN, bold=is_current)
+    mag = _attr(PAIR_MAGENTA)
+    prefix_attr = pink if is_cursor else cyan
+    _add_segments(stdscr, y, [
+        ("> " if is_cursor else "  ", prefix_attr),
+        (f"{b.display:<28}", cyan),
+        (f"  [{b.name}]", mag),
+    ])
+
+
+def _draw_horizon(stdscr, y: int, w: int) -> None:
+    try:
+        stdscr.addnstr(
+            y, 0, "═" * max(0, w - 1), w - 1,
+            _attr(PAIR_MAGENTA, bold=True),
+        )
+    except curses.error:
+        pass
+
+
+def _draw_status(stdscr, y: int, state: PlayerState) -> None:
+    pink = _attr(PAIR_PINK, bold=True)
+    cyan = _attr(PAIR_CYAN, bold=True)
+    mag_dim = _attr(PAIR_MAGENTA, dim=True)
+    gold = _attr(PAIR_GOLD, bold=True)
+    gold_dim = _attr(PAIR_GOLD, dim=True)
+
+    if state.status == "idle":
+        _add_segments(stdscr, y, [("■ idle", mag_dim)])
+    elif state.status == "resolving":
+        name = state.current.display if state.current else ""
+        _add_segments(stdscr, y, [
+            ("… resolving ", cyan),
+            (name, cyan),
+        ])
+    elif state.status == "error":
+        _add_segments(stdscr, y, [
+            ("error: ", gold),
+            (state.error or "unknown", mag_dim),
+        ])
+    elif state.status == "playing":
+        elapsed = _format_elapsed(time.monotonic() - state.started_at)
+        name = state.current.display if state.current else ""
+        _add_segments(stdscr, y, [
+            ("▶ ", pink),
+            (f"{name}   ", cyan),
+            (elapsed, gold),
+        ])
+    elif state.status == "paused":
+        elapsed = _format_elapsed(time.monotonic() - state.started_at)
+        name = state.current.display if state.current else ""
+        _add_segments(stdscr, y, [
+            ("‖ ", gold),
+            (f"{name}   ", cyan),
+            (elapsed, gold_dim),
+        ])
+
+
+def _draw_keys(stdscr, y: int) -> None:
+    pink = _attr(PAIR_PINK, bold=True)
+    mag = _attr(PAIR_MAGENTA, dim=True)
+    _add_segments(stdscr, y, [
+        ("↑↓", pink), (" select   ", mag),
+        ("⏎", pink), (" play   ", mag),
+        ("space", pink), (" pause   ", mag),
+        ("r", pink), (" reload   ", mag),
+        ("q", pink), (" quit", mag),
+    ])
 
 
 def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) -> None:
     stdscr.erase()
     h, w = stdscr.getmaxyx()
+    list_top = 1
     max_rows = max(0, h - 4)
 
+    _draw_header(stdscr)
+
     if not bookmarks:
-        stdscr.addnstr(
-            0, 0,
-            "no streams. edit ~/.config/lofi/streams.toml",
-            w - 1,
-        )
+        try:
+            stdscr.addnstr(
+                list_top, 0,
+                "no streams. edit ~/.config/lofi/streams.toml",
+                w - 1, _attr(PAIR_MAGENTA, dim=True),
+            )
+        except curses.error:
+            pass
     else:
-        # Scroll the window so the cursor is always visible.
         start = max(0, cursor - max_rows + 1) if cursor >= max_rows else 0
         visible = bookmarks[start : start + max_rows]
         for i, b in enumerate(visible):
             idx = start + i
-            prefix = "> " if idx == cursor else "  "
-            line = f"{prefix}{b.display:<28}  [{b.name}]"
-            stdscr.addnstr(i, 0, line, w - 1)
+            _draw_row(
+                stdscr, list_top + i, b,
+                is_cursor=(idx == cursor),
+                is_current=(state.current is b),
+            )
         hidden = len(bookmarks) - len(visible)
         if hidden > 0:
-            stdscr.addnstr(
-                len(visible), 0,
-                f"  ... +{hidden} more", w - 1,
-            )
+            try:
+                stdscr.addnstr(
+                    list_top + len(visible), 0,
+                    f"  ... +{hidden} more", w - 1,
+                    _attr(PAIR_MAGENTA, dim=True),
+                )
+            except curses.error:
+                pass
 
-    status_row = h - 2
-    if state.status == "idle":
-        status_line = f"{_glyph('idle')} idle"
-    elif state.status == "resolving":
-        name = state.current.display if state.current else ""
-        status_line = f"… resolving {name}"
-    elif state.status == "error":
-        status_line = f"error: {state.error or 'unknown'}"
-    else:  # playing or paused
-        elapsed = _format_elapsed(time.monotonic() - state.started_at)
-        name = state.current.display if state.current else ""
-        status_line = f"{_glyph(state.status)} {name}   {elapsed}"
-
-    stdscr.addnstr(status_row, 0, status_line, w - 1)
-    stdscr.addnstr(h - 1, 0, KEY_HELP, w - 1)
+    _draw_horizon(stdscr, h - 3, w)
+    _draw_status(stdscr, h - 2, state)
+    _draw_keys(stdscr, h - 1)
     stdscr.refresh()
 
 
@@ -299,8 +424,8 @@ def run_tui(
     config_path: Path,
 ) -> None:
     curses.curs_set(0)
+    _init_colors()
     stdscr.timeout(500)  # redraw at least twice per second
-    cursor = 0
     state = PlayerState()
     state_lock = threading.Lock()
 
@@ -318,7 +443,6 @@ def run_tui(
 
     def on_resolved(bookmark, url, err) -> None:
         with state_lock:
-            # If user moved on, ignore stale results
             if state.current is not bookmark or state.status != "resolving":
                 return
             if err:
@@ -329,6 +453,18 @@ def run_tui(
             state.status = "playing"
             state.started_at = time.monotonic()
 
+    # Auto-play synthwave on launch; fall back to first bookmark if absent.
+    cursor = 0
+    if bookmarks:
+        auto = next(
+            (b for b in bookmarks if b.name == "synthwave"), bookmarks[0]
+        )
+        cursor = bookmarks.index(auto)
+        with state_lock:
+            state.current = auto
+            state.status = "resolving"
+        _resolve_in_background(auto, on_resolved)
+
     while True:
         with state_lock:
             _draw(stdscr, bookmarks, cursor, state)
@@ -337,8 +473,8 @@ def run_tui(
         except KeyboardInterrupt:
             break
         if ch == -1 or ch == curses.KEY_RESIZE:
-            continue  # timeout or resize, redraw
-        if ch in (ord("q"), 27):  # q or ESC
+            continue
+        if ch in (ord("q"), 27):
             break
         if not bookmarks:
             continue
@@ -360,12 +496,6 @@ def run_tui(
                 elif state.status == "paused":
                     if safe_ipc("resume", client.resume):
                         state.status = "playing"
-        elif ch == ord("s"):
-            with state_lock:
-                if state.status in ("playing", "paused"):
-                    if safe_ipc("stop", client.stop):
-                        state.status = "idle"
-                        state.current = None
         elif ch == ord("r"):
             try:
                 bookmarks[:] = load_config(config_path)
