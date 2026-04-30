@@ -74,7 +74,7 @@ title = "synthwave radio"
 
 [lofi]
 url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
-title = "lofi hip hop radio"
+title = "lofi radio"
 
 [relax]
 url = "https://www.youtube.com/watch?v=28KRPhVzCus"
