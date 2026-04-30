@@ -305,11 +305,11 @@ def _draw_row(
 
 
 def _draw_horizon(stdscr, y: int, w: int) -> None:
+    pattern = "▒▓█▓▒░"
+    width = max(0, w - 1)
+    fill = (pattern * (width // len(pattern) + 1))[:width]
     try:
-        stdscr.addnstr(
-            y, 0, "═" * max(0, w - 1), w - 1,
-            _attr(PAIR_MAGENTA, bold=True),
-        )
+        stdscr.addnstr(y, 0, fill, w - 1, _attr(PAIR_PINK, bold=True))
     except curses.error:
         pass
 
