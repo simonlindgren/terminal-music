@@ -298,12 +298,12 @@ def _draw_header(stdscr, w: int) -> None:
 def _draw_row(
     stdscr, y: int, b: Bookmark, is_cursor: bool, is_current: bool,
 ) -> None:
-    cyan = _attr(PAIR_CYAN, bold=True)
-    mag = _attr(PAIR_MAGENTA, bold=is_current)
-    prefix_attr = cyan if is_cursor else mag
+    pink = _attr(PAIR_PINK, bold=True)
+    blue = _attr(PAIR_BLUE, bold=is_current)
+    attr = pink if is_cursor else blue
     _add_segments(stdscr, y, [
-        ("> " if is_cursor else "  ", prefix_attr),
-        (f"[{b.name}]", mag),
+        ("> " if is_cursor else "  ", attr),
+        (f"[{b.name}]", attr),
     ])
 
 
