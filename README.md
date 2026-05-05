@@ -1,6 +1,6 @@
-# lofi
+# raedio
 
-![lofi](preview.png)
+![raedio](preview.png)
 
 minimalist terminal music player for YouTube livestreams.
 
@@ -8,13 +8,13 @@ minimalist terminal music player for YouTube livestreams.
 
 ```
 brew install yt-dlp mpv
-cp lofi.py ~/.local/bin/lofi
-chmod +x ~/.local/bin/lofi
+cp raedio ~/.local/bin/
+chmod +x ~/.local/bin/raedio
 ```
 
 ## use
 
-run `lofi`. on first launch it seeds `~/.config/lofi/streams.toml`
+run `raedio`. on first launch it seeds `~/.config/raedio/streams.toml`
 with three streams (synthwave, lofi, relax) and starts playing
 synthwave automatically. edit the config to add or remove
 bookmarks.
