@@ -1,6 +1,6 @@
 # rädio
 
-![raedio](preview.png)
+![raedio](raedio.png)
 
 minimalist terminal music player for YouTube livestreams.
 
