@@ -1,4 +1,4 @@
-# raedio
+# rädio
 
 ![raedio](preview.png)
 
