@@ -228,6 +228,7 @@ PAIR_PINK = 1
 PAIR_CYAN = 2
 PAIR_MAGENTA = 3
 PAIR_GOLD = 4
+PAIR_BLUE = 5
 
 
 def _init_colors() -> None:
@@ -240,16 +241,18 @@ def _init_colors() -> None:
     except curses.error:
         bg = curses.COLOR_BLACK
     if curses.COLORS >= 256:
-        pink, cyan, mag, gold = 205, 51, 165, 227
+        pink, cyan, mag, gold, blue = 205, 51, 165, 227, 27
     else:
         pink = curses.COLOR_MAGENTA
         cyan = curses.COLOR_CYAN
         mag = curses.COLOR_MAGENTA
         gold = curses.COLOR_YELLOW
+        blue = curses.COLOR_BLUE
     curses.init_pair(PAIR_PINK, pink, bg)
     curses.init_pair(PAIR_CYAN, cyan, bg)
     curses.init_pair(PAIR_MAGENTA, mag, bg)
     curses.init_pair(PAIR_GOLD, gold, bg)
+    curses.init_pair(PAIR_BLUE, blue, bg)
 
 
 def _attr(pair: int, *, bold: bool = False, dim: bool = False) -> int:
@@ -278,18 +281,18 @@ def _add_segments(stdscr, y: int, segments: list[tuple[str, int]]) -> None:
 
 
 def _draw_header(stdscr, w: int) -> None:
-    pink = _attr(PAIR_PINK, bold=True)
+    blue = _attr(PAIR_BLUE, bold=True)
     cyan = _attr(PAIR_CYAN, bold=True)
     title = [
-        ("░▒▓█ ", pink),
+        ("░▒▓█ ", blue),
         ("R Ä D I O", cyan),
-        (" █▓▒░", pink),
+        (" █▓▒░", blue),
     ]
     used = sum(len(t) for t, _ in title)
     remaining = max(0, w - 1 - used)
     pattern = "▒▓█▓▒░"
     fill = (pattern * (remaining // len(pattern) + 1))[:remaining]
-    _add_segments(stdscr, 0, title + [(fill, pink)])
+    _add_segments(stdscr, 0, title + [(fill, blue)])
 
 
 def _draw_row(
@@ -309,7 +312,7 @@ def _draw_horizon(stdscr, y: int, w: int) -> None:
     width = max(0, w - 1)
     fill = (pattern * (width // len(pattern) + 1))[:width]
     try:
-        stdscr.addnstr(y, 0, fill, w - 1, _attr(PAIR_PINK, bold=True))
+        stdscr.addnstr(y, 0, fill, w - 1, _attr(PAIR_BLUE, bold=True))
     except curses.error:
         pass
 
