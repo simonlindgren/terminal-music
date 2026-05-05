@@ -282,7 +282,7 @@ def _draw_header(stdscr, w: int) -> None:
     cyan = _attr(PAIR_CYAN, bold=True)
     title = [
         ("░▒▓█ ", pink),
-        ("L O F I", cyan),
+        ("R Ä D I O", cyan),
         (" █▓▒░", pink),
     ]
     used = sum(len(t) for t, _ in title)
