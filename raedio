@@ -73,7 +73,7 @@ url = "https://www.youtube.com/watch?v=4xDzrJKXOOY"
 title = "synthwave radio"
 
 [lofi]
-url = "https://www.youtube.com/watch?v=N0snMcR6aaA"
+url = "https://www.youtube.com/watch?v=jfKfPfyJRdk"
 title = "lofi radio"
 
 [relax]
@@ -117,6 +117,24 @@ def resolve_stream_url(url: str, runner=subprocess.run) -> str:
     if not line:
         raise ResolverError("yt-dlp returned no URL")
     return line
+
+
+def short_resolver_reason(err: str) -> str:
+    """Map a raw yt-dlp/OS error message to a short TUI-friendly phrase."""
+    text = (err or "").lower()
+    if (
+        "live stream recording is not available" in text
+        or "post-live manifestless" in text
+        or "this live event will begin" in text
+    ):
+        return "stream offline"
+    if "video unavailable" in text or "private video" in text:
+        return "video unavailable"
+    if "sign in to confirm" in text:
+        return "blocked by youtube (update yt-dlp)"
+    if "no such file or directory" in text and "yt-dlp" in text:
+        return "yt-dlp not installed"
+    return "could not resolve"
 
 
 # MpvClient — JSON-IPC command sending
@@ -449,7 +467,7 @@ def run_tui(
             if state.current is not bookmark or state.status != "resolving":
                 return
             if err:
-                set_error(f"could not resolve {bookmark.name}")
+                set_error(f"{bookmark.name}: {short_resolver_reason(err)}")
                 return
             if not safe_ipc("load", lambda: client.load(url)):
                 return
