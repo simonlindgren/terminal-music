@@ -384,20 +384,36 @@ def _draw_keys(stdscr, y: int) -> None:
     ])
 
 
+# Viewport caps so big terminals get a centered block matching the
+# screenshot proportions instead of a stretched layout.
+MAX_VIEWPORT_COLS = 50
+MAX_VIEWPORT_ROWS = 10
+
+
+def _viewport(stdscr):
+    H, W = stdscr.getmaxyx()
+    vw = min(W, MAX_VIEWPORT_COLS)
+    vh = min(H, MAX_VIEWPORT_ROWS)
+    return stdscr.derwin(vh, vw, 0, 0)
+
+
 def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) -> None:
     stdscr.erase()
-    h, w = stdscr.getmaxyx()
+    stdscr.noutrefresh()
+    win = _viewport(stdscr)
+    win.erase()
+    h, w = win.getmaxyx()
     # Rows 1..h-4 are the space between header and horizon.
     available_top = 1
     available_rows = max(0, h - 4)
 
-    _draw_header(stdscr, w)
+    _draw_header(win, w)
 
     if not bookmarks:
         msg = "no streams. edit ~/.config/raedio/streams.toml"
         y = available_top + max(0, (available_rows - 1) // 2)
         try:
-            stdscr.addnstr(y, 0, msg, w - 1, _attr(PAIR_MAGENTA, dim=True))
+            win.addnstr(y, 0, msg, w - 1, _attr(PAIR_MAGENTA, dim=True))
         except curses.error:
             pass
     else:
@@ -409,13 +425,13 @@ def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) ->
         for i, b in enumerate(visible):
             idx = start + i
             _draw_row(
-                stdscr, list_top + i, b,
+                win, list_top + i, b,
                 is_cursor=(idx == cursor),
                 is_current=(state.current is b),
             )
         if hidden > 0:
             try:
-                stdscr.addnstr(
+                win.addnstr(
                     list_top + len(visible), 0,
                     f"  ... +{hidden} more", w - 1,
                     _attr(PAIR_MAGENTA, dim=True),
@@ -423,10 +439,11 @@ def _draw(stdscr, bookmarks: list[Bookmark], cursor: int, state: PlayerState) ->
             except curses.error:
                 pass
 
-    _draw_horizon(stdscr, h - 3, w)
-    _draw_status(stdscr, h - 2, state)
-    _draw_keys(stdscr, h - 1)
-    stdscr.refresh()
+    _draw_horizon(win, h - 3, w)
+    _draw_status(win, h - 2, state)
+    _draw_keys(win, h - 1)
+    win.noutrefresh()
+    curses.doupdate()
 
 
 def _resolve_in_background(bookmark: Bookmark, on_done) -> None:
