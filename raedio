@@ -80,7 +80,7 @@ title = "lofi radio"
 url = "https://www.youtube.com/watch?v=xORCbIptqcc"
 title = "relax radio"
 
-[claude]
+["claude fm"]
 url = "https://www.youtube.com/watch?v=YmQ7jRgf4f0"
 title = "claude fm"
 """
