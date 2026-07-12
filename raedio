@@ -17,6 +17,7 @@ import threading
 import time
 import tomllib
 from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
 
 
@@ -245,6 +246,11 @@ class PlayerState:
     started_at: float = 0.0       # time.monotonic() when loadfile sent
 
 
+class TuiExit(Enum):
+    QUIT = auto()
+    REBOOT = auto()
+
+
 # Synthwave color pairs (16-color fallback if 256 isn't available)
 PAIR_PINK = 1
 PAIR_CYAN = 2
@@ -384,13 +390,14 @@ def _draw_keys(stdscr, y: int) -> None:
         ("↑↓", pink), (" select   ", mag),
         ("⏎", pink), (" play   ", mag),
         ("space", pink), (" pause   ", mag),
+        ("r", pink), (" reboot   ", mag),
         ("q", pink), (" quit", mag),
     ])
 
 
 # Viewport caps so big terminals get a centered block matching the
 # screenshot proportions instead of a stretched layout.
-MAX_VIEWPORT_COLS = 50
+MAX_VIEWPORT_COLS = 56
 MAX_VIEWPORT_ROWS = 10
 
 
@@ -464,12 +471,18 @@ def run_tui(
     stdscr,
     bookmarks: list[Bookmark],
     client: MpvClient,
-) -> None:
+) -> TuiExit:
     curses.curs_set(0)
     _init_colors()
     stdscr.timeout(500)  # redraw at least twice per second
     state = PlayerState()
     state_lock = threading.Lock()
+    session_closed = threading.Event()
+
+    def exit_tui(reason: TuiExit) -> TuiExit:
+        with state_lock:
+            session_closed.set()
+        return reason
 
     def set_error(msg: str) -> None:
         state.status = "error"
@@ -485,7 +498,11 @@ def run_tui(
 
     def on_resolved(bookmark, url, err) -> None:
         with state_lock:
-            if state.current is not bookmark or state.status != "resolving":
+            if (
+                session_closed.is_set()
+                or state.current is not bookmark
+                or state.status != "resolving"
+            ):
                 return
             if err:
                 set_error(f"{bookmark.name}: {short_resolver_reason(err)}")
@@ -513,11 +530,13 @@ def run_tui(
         try:
             ch = stdscr.getch()
         except KeyboardInterrupt:
-            break
+            return exit_tui(TuiExit.QUIT)
         if ch == -1 or ch == curses.KEY_RESIZE:
             continue
         if ch in (ord("q"), 27):
-            break
+            return exit_tui(TuiExit.QUIT)
+        if ch == ord("r"):
+            return exit_tui(TuiExit.REBOOT)
         if not bookmarks:
             continue
         if ch in (curses.KEY_UP, ord("k")):
@@ -553,31 +572,37 @@ def main(argv: list[str] | None = None) -> int:
     # Honour the user's locale so curses can render the Unicode glyphs.
     locale.setlocale(locale.LC_ALL, "")
 
-    for binary in ("mpv", "yt-dlp"):
-        msg = _check_binary(binary)
-        if msg:
-            print(msg, file=sys.stderr)
+    while True:
+        for binary in ("mpv", "yt-dlp"):
+            msg = _check_binary(binary)
+            if msg:
+                print(msg, file=sys.stderr)
+                return 1
+
+        seed_config_if_missing(CONFIG_PATH)
+        try:
+            bookmarks = load_config(CONFIG_PATH)
+        except Exception as exc:
+            print(
+                f"raedio: failed to read {CONFIG_PATH}: {exc}",
+                file=sys.stderr,
+            )
             return 1
 
-    seed_config_if_missing(CONFIG_PATH)
-    try:
-        bookmarks = load_config(CONFIG_PATH)
-    except Exception as exc:
-        print(f"raedio: failed to read {CONFIG_PATH}: {exc}", file=sys.stderr)
-        return 1
+        try:
+            proc, sock, sock_path = start_mpv()
+        except RuntimeError as exc:
+            print(f"raedio: {exc}", file=sys.stderr)
+            return 1
 
-    try:
-        proc, sock, sock_path = start_mpv()
-    except RuntimeError as exc:
-        print(f"raedio: {exc}", file=sys.stderr)
-        return 1
+        client = MpvClient(sock)
+        try:
+            tui_exit = curses.wrapper(run_tui, bookmarks, client)
+        finally:
+            stop_mpv(proc, sock, sock_path)
 
-    client = MpvClient(sock)
-    try:
-        curses.wrapper(run_tui, bookmarks, client)
-    finally:
-        stop_mpv(proc, sock, sock_path)
-    return 0
+        if tui_exit is TuiExit.QUIT:
+            return 0
 
 
 if __name__ == "__main__":

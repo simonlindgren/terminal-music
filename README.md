@@ -15,8 +15,9 @@ chmod +x ~/.local/bin/raedio
 ## use
 
 run `raedio`. on first launch it seeds `~/.config/raedio/streams.toml`
-with three streams (synthwave, lofi, relax) and starts playing
-synthwave automatically. edit the config to add or remove
+with four streams (synthwave, lofi, relax, claude fm) and starts
+playing synthwave automatically. edit the config to add or remove
 bookmarks.
 
-keys: `↑↓` or `j k` select, `⏎` play, `space` pause, `q` quit.
+keys: `↑↓` or `j k` select, `⏎` play, `space` pause, `r` reboot,
+`q` quit.
